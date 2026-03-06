@@ -326,6 +326,8 @@
   .stat-card.invalid .stat-value { color: var(--red); }
   .stat-card.disposable .stat-value { color: var(--yellow); }
   .stat-card.role    .stat-value { color: var(--purple); }
+  .stat-card.unknown::before { background: var(--blue); }
+  .stat-card.unknown .stat-value { color: var(--blue); }
 
   /* ── Downloads ── */
   #download-section {
@@ -491,6 +493,7 @@
   .pill.INVALID     { background: rgba(255,77,109,0.12); color: var(--red);    border: 1px solid rgba(255,77,109,0.3); }
   .pill.DISPOSABLE  { background: rgba(255,209,102,0.12); color: var(--yellow); border: 1px solid rgba(255,209,102,0.3); }
   .pill.ROLE-BASED  { background: rgba(162,155,254,0.12); color: var(--purple); border: 1px solid rgba(162,155,254,0.3); }
+  .pill.UNKNOWN     { background: rgba(116,185,255,0.12); color: var(--blue);   border: 1px solid rgba(116,185,255,0.3); }
 
   .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
@@ -643,6 +646,10 @@
         <div class="stat-label">Role-Based</div>
         <div class="stat-value" id="stat-role">0</div>
       </div>
+      <div class="stat-card unknown">
+        <div class="stat-label">Unknown</div>
+        <div class="stat-value" id="stat-unknown">0</div>
+      </div>
     </div>
   </section>
 
@@ -663,6 +670,7 @@
       <button class="filter-btn" data-filter="INVALID">Invalid</button>
       <button class="filter-btn" data-filter="DISPOSABLE">Disposable</button>
       <button class="filter-btn" data-filter="ROLE-BASED">Role-Based</button>
+      <button class="filter-btn" data-filter="UNKNOWN">Unknown</button>
       <input class="search-box" type="text" id="search-box" placeholder="Search emails…">
     </div>
     <div class="table-wrap">
@@ -775,13 +783,14 @@ async function loadResults() {
     allResults = data.results;
 
     // Stats
-    const counts = { VALID:0, INVALID:0, DISPOSABLE:0, 'ROLE-BASED':0 };
+    const counts = { VALID:0, INVALID:0, DISPOSABLE:0, 'ROLE-BASED':0, UNKNOWN:0 };
     allResults.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
     document.getElementById('stat-total').textContent = allResults.length.toLocaleString();
     document.getElementById('stat-valid').textContent = counts.VALID.toLocaleString();
     document.getElementById('stat-invalid').textContent = counts.INVALID.toLocaleString();
     document.getElementById('stat-disposable').textContent = counts.DISPOSABLE.toLocaleString();
     document.getElementById('stat-role').textContent = counts['ROLE-BASED'].toLocaleString();
+    document.getElementById('stat-unknown').textContent = (counts.UNKNOWN||0).toLocaleString();
 
     // Show stats
     document.getElementById('progress-section').style.display = 'none';
@@ -810,6 +819,7 @@ function buildDownloads(counts) {
     { key:'invalid',    icon:'❌', name:'Invalid Emails', sub:'invalid_emails.csv',count: counts.INVALID },
     { key:'disposable', icon:'🗑️', name:'Disposable',     sub:'disposable_emails.csv', count: counts.DISPOSABLE },
     { key:'role',       icon:'👤', name:'Role-Based',     sub:'role_emails.csv',   count: counts['ROLE-BASED'] },
+    { key:'unknown',    icon:'❓', name:'Unknown',        sub:'unknown_emails.csv', count: counts.UNKNOWN||0 },
   ];
   const grid = document.getElementById('download-grid');
   grid.innerHTML = downloads.map(d => `
