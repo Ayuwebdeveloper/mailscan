@@ -739,15 +739,19 @@ async function handleFile(file) {
 
 async function poll() {
   if (!jobId) return;
-  const res = await fetch(`/status/${jobId}`);
-  const data = await res.json();
-  setProgress(data.progress, data.total,
-    data.status === 'done' ? '✓ Verification complete!' :
-    `Verifying email ${data.progress} of ${data.total}…`);
-  if (data.status === 'done') {
-    clearInterval(pollTimer);
-    await loadResults();
-  }
+  try {
+    const res = await fetch(`/status/${jobId}`);
+    const data = await res.json();
+    setProgress(data.progress, data.total,
+      data.status === 'done' ? '✓ Verification complete!' :
+      `Verifying email ${data.progress} of ${data.total}…`);
+    if (data.status === 'done') {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      // Small delay to ensure backend has finalised results
+      setTimeout(async () => { await loadResults(); }, 500);
+    }
+  } catch(e) { console.error('Poll error:', e); }
 }
 
 function setProgress(done, total, msg) {
@@ -761,33 +765,42 @@ function setProgress(done, total, msg) {
   }
 }
 
+let loadingResults = false;
 async function loadResults() {
-  const res = await fetch(`/results/${jobId}`);
-  const data = await res.json();
-  allResults = data.results;
+  if (loadingResults) return;
+  loadingResults = true;
+  try {
+    const res = await fetch(`/results/${jobId}`);
+    const data = await res.json();
+    allResults = data.results;
 
-  // Stats
-  const counts = { VALID:0, INVALID:0, DISPOSABLE:0, 'ROLE-BASED':0 };
-  allResults.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
-  document.getElementById('stat-total').textContent = allResults.length.toLocaleString();
-  document.getElementById('stat-valid').textContent = counts.VALID.toLocaleString();
-  document.getElementById('stat-invalid').textContent = counts.INVALID.toLocaleString();
-  document.getElementById('stat-disposable').textContent = counts.DISPOSABLE.toLocaleString();
-  document.getElementById('stat-role').textContent = counts['ROLE-BASED'].toLocaleString();
+    // Stats
+    const counts = { VALID:0, INVALID:0, DISPOSABLE:0, 'ROLE-BASED':0 };
+    allResults.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+    document.getElementById('stat-total').textContent = allResults.length.toLocaleString();
+    document.getElementById('stat-valid').textContent = counts.VALID.toLocaleString();
+    document.getElementById('stat-invalid').textContent = counts.INVALID.toLocaleString();
+    document.getElementById('stat-disposable').textContent = counts.DISPOSABLE.toLocaleString();
+    document.getElementById('stat-role').textContent = counts['ROLE-BASED'].toLocaleString();
 
-  // Show stats
-  document.getElementById('progress-section').style.display = 'none';
-  document.getElementById('stats-section').style.display = 'block';
+    // Show stats
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('stats-section').style.display = 'block';
 
-  // Downloads
-  buildDownloads(counts);
-  document.getElementById('download-section').style.display = 'block';
+    // Downloads
+    buildDownloads(counts);
+    document.getElementById('download-section').style.display = 'block';
 
-  // Table
-  applyFilter('ALL');
-  document.getElementById('results-section').style.display = 'block';
+    // Table
+    applyFilter('ALL');
+    document.getElementById('results-section').style.display = 'block';
 
-  showToast(`✓ ${allResults.length.toLocaleString()} emails verified`, 'success');
+    showToast(`✓ ${allResults.length.toLocaleString()} emails verified`, 'success');
+  } catch(e) {
+    showError('Failed to load results: ' + e.message);
+  } finally {
+    loadingResults = false;
+  }
 }
 
 function buildDownloads(counts) {
