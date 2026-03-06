@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MailScan — Email Verification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d11;
+    --surface: #13161d;
+    --surface2: #1c2029;
+    --border: #252a35;
+    --accent: #00e5a0;
+    --accent-dim: rgba(0,229,160,0.12);
+    --accent-glow: rgba(0,229,160,0.35);
+    --red: #ff4d6d;
+    --yellow: #ffd166;
+    --blue: #74b9ff;
+    --purple: #a29bfe;
+    --text: #e8eaf0;
+    --text-dim: #6b7280;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow blob */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px; left: 50%;
+    transform: translateX(-50%);
+    width: 800px; height: 500px;
+    background: radial-gradient(ellipse, rgba(0,229,160,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 40px 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo-icon {
+    width: 42px; height: 42px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+
+  .logo-text {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .tagline {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── Upload Zone ── */
+  .upload-section {
+    padding: 56px 0 40px;
+    max-width: 680px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+  }
+
+  .sub {
+    color: var(--text-dim);
+    font-size: 15px;
+    line-height: 1.7;
+    margin-bottom: 40px;
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 56px 32px;
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent-dim);
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-dim), 0 0 40px var(--accent-glow);
+  }
+
+  .drop-zone:hover::before, .drop-zone.drag-over::before {
+    opacity: 1;
+  }
+
+  .drop-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+    position: relative;
+    z-index: 1;
+  }
+
+  .drop-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    position: relative; z-index: 1;
+  }
+
+  .drop-subtitle {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    position: relative; z-index: 1;
+  }
+
+  .drop-subtitle em {
+    color: var(--accent);
+    font-style: normal;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+  }
+
+  .file-types {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 20px;
+    position: relative; z-index: 1;
+  }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  #file-input { display: none; }
+
+  /* ── Progress ── */
+  #progress-section {
+    display: none;
+    max-width: 680px;
+    margin: 0 auto 40px;
+  }
+
+  .progress-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+  }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .progress-title {
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .progress-count {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  .progress-bar-bg {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #00c4ff);
+    border-radius: 999px;
+    width: 0%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+
+  .progress-status {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 12px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Stats ── */
+  #stats-section {
+    display: none;
+    margin-bottom: 40px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card.valid::before   { background: var(--accent); }
+  .stat-card.invalid::before { background: var(--red); }
+  .stat-card.disposable::before { background: var(--yellow); }
+  .stat-card.role::before    { background: var(--purple); }
+  .stat-card.total::before   { background: linear-gradient(90deg, var(--accent), var(--blue)); }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  .stat-card.valid   .stat-value { color: var(--accent); }
+  .stat-card.invalid .stat-value { color: var(--red); }
+  .stat-card.disposable .stat-value { color: var(--yellow); }
+  .stat-card.role    .stat-value { color: var(--purple); }
+
+  /* ── Downloads ── */
+  #download-section {
+    display: none;
+    margin-bottom: 40px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .download-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .dl-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    color: var(--text);
+    text-decoration: none;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .dl-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+
+  .dl-btn .dl-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .dl-btn .dl-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dl-btn .dl-name { font-size: 13px; font-weight: 700; }
+  .dl-btn .dl-sub  { font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
+
+  /* ── Table ── */
+  #results-section { display: none; margin-bottom: 60px; }
+
+  .table-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+
+  .filter-btn.active, .filter-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .search-box {
+    margin-left: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    outline: none;
+    width: 220px;
+    transition: border-color 0.2s;
+  }
+
+  .search-box::placeholder { color: var(--text-dim); }
+  .search-box:focus { border-color: var(--accent); }
+
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  thead {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 14px 20px;
+    text-align: left;
+    font-weight: 500;
+  }
+
+  td {
+    padding: 12px 20px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tr:hover td { background: var(--surface2); }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .pill.VALID       { background: rgba(0,229,160,0.12); color: var(--accent); border: 1px solid rgba(0,229,160,0.3); }
+  .pill.INVALID     { background: rgba(255,77,109,0.12); color: var(--red);    border: 1px solid rgba(255,77,109,0.3); }
+  .pill.DISPOSABLE  { background: rgba(255,209,102,0.12); color: var(--yellow); border: 1px solid rgba(255,209,102,0.3); }
+  .pill.ROLE-BASED  { background: rgba(162,155,254,0.12); color: var(--purple); border: 1px solid rgba(162,155,254,0.3); }
+
+  .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .reason-text { color: var(--text-dim); font-size: 12px; }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .page-btns { display: flex; gap: 6px; }
+
+  .page-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+
+  .page-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ── Reset ── */
+  .reset-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 auto 20px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .reset-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 20px;
+    font-size: 13px;
+    font-family: var(--mono);
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 100;
+    max-width: 320px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { border-color: var(--red); color: var(--red); }
+  .toast.success { border-color: var(--accent); color: var(--accent); }
+
+  /* Animations */
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .pulsing { animation: pulse 1.5s infinite; }
+
+  @keyframes fade-in { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+  .fade-in { animation: fade-in 0.4s ease forwards; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-icon">✉</div>
+    <div class="logo-text">Mail<span>Scan</span></div>
+    <div class="tagline">Email Verification Engine v2.0</div>
+  </header>
+
+  <!-- Upload -->
+  <section class="upload-section" id="upload-section">
+    <div class="section-label">▸ Step 01 — Import</div>
+    <h1>Verify Your<br>Email Lists</h1>
+    <p class="sub">Upload a CSV or Excel file containing email addresses. We'll validate format, detect disposable domains, role-based addresses, and check MX records — at scale.</p>
+
+    <div class="drop-zone" id="drop-zone">
+      <span class="drop-icon">📂</span>
+      <div class="drop-title">Drop your file here</div>
+      <div class="drop-subtitle">or <em id="browse-trigger">browse to upload</em></div>
+      <div class="file-types">
+        <span class="badge">.CSV</span>
+        <span class="badge">.XLSX</span>
+        <span class="badge">.XLS</span>
+        <span class="badge">UP TO 50 MB</span>
+        <span class="badge">10,000+ EMAILS</span>
+      </div>
+    </div>
+    <input type="file" id="file-input" accept=".csv,.xlsx,.xls" />
+  </section>
+
+  <!-- Progress -->
+  <section id="progress-section">
+    <div class="section-label" style="text-align:center;margin-bottom:24px;">▸ Step 02 — Verifying</div>
+    <div class="progress-card">
+      <div class="progress-header">
+        <div class="progress-title pulsing" id="progress-title">Processing emails…</div>
+        <div class="progress-count" id="progress-count">0 / 0</div>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-bar"></div>
+      </div>
+      <div class="progress-status" id="progress-status">Initializing…</div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section id="stats-section" class="fade-in">
+    <div class="stats-grid">
+      <div class="stat-card total">
+        <div class="stat-label">Total Processed</div>
+        <div class="stat-value" id="stat-total">0</div>
+      </div>
+      <div class="stat-card valid">
+        <div class="stat-label">Valid</div>
+        <div class="stat-value" id="stat-valid">0</div>
+      </div>
+      <div class="stat-card invalid">
+        <div class="stat-label">Invalid</div>
+        <div class="stat-value" id="stat-invalid">0</div>
+      </div>
+      <div class="stat-card disposable">
+        <div class="stat-label">Disposable</div>
+        <div class="stat-value" id="stat-disposable">0</div>
+      </div>
+      <div class="stat-card role">
+        <div class="stat-label">Role-Based</div>
+        <div class="stat-value" id="stat-role">0</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Downloads -->
+  <section id="download-section">
+    <div class="section-title">Download Reports</div>
+    <div class="download-grid" id="download-grid">
+      <!-- filled by JS -->
+    </div>
+  </section>
+
+  <!-- Results Table -->
+  <section id="results-section">
+    <div class="section-title">Verification Results</div>
+    <div class="table-controls">
+      <button class="filter-btn active" data-filter="ALL">All</button>
+      <button class="filter-btn" data-filter="VALID">Valid</button>
+      <button class="filter-btn" data-filter="INVALID">Invalid</button>
+      <button class="filter-btn" data-filter="DISPOSABLE">Disposable</button>
+      <button class="filter-btn" data-filter="ROLE-BASED">Role-Based</button>
+      <input class="search-box" type="text" id="search-box" placeholder="Search emails…">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Email Address</th>
+            <th>Status</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+      <div class="pagination">
+        <div id="page-info">Showing 0–0 of 0</div>
+        <div class="page-btns">
+          <button class="page-btn" id="btn-prev" disabled>← Prev</button>
+          <button class="page-btn" id="btn-next" disabled>Next →</button>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:24px;display:flex;justify-content:center;">
+      <button class="reset-btn" id="reset-btn">↺ &nbsp;Start Over</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const PAGE_SIZE = 50;
+let allResults = [], filteredResults = [], currentPage = 0, currentFilter = 'ALL', searchQuery = '';
+let jobId = null, pollTimer = null;
+
+// ─── Drop zone ───────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+document.getElementById('browse-trigger').addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+async function handleFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['csv','xlsx','xls'].includes(ext)) {
+    showToast('Unsupported file type. Use CSV or Excel.', 'error'); return;
+  }
+  const fd = new FormData();
+  fd.append('file', file);
+
+  document.getElementById('upload-section').style.display = 'none';
+  document.getElementById('progress-section').style.display = 'block';
+  setProgress(0, 0, 'Uploading file…');
+
+  try {
+    const res = await fetch('/upload', { method:'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error || 'Upload failed'); return; }
+    jobId = data.job_id;
+    setProgress(0, data.total, 'Starting verification…');
+    pollTimer = setInterval(poll, 600);
+  } catch(e) { showError('Network error: ' + e.message); }
+}
+
+async function poll() {
+  if (!jobId) return;
+  const res = await fetch(`/status/${jobId}`);
+  const data = await res.json();
+  setProgress(data.progress, data.total,
+    data.status === 'done' ? '✓ Verification complete!' :
+    `Verifying email ${data.progress} of ${data.total}…`);
+  if (data.status === 'done') {
+    clearInterval(pollTimer);
+    await loadResults();
+  }
+}
+
+function setProgress(done, total, msg) {
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-count').textContent = `${done.toLocaleString()} / ${total.toLocaleString()}`;
+  document.getElementById('progress-status').textContent = msg;
+  if (done === total && total > 0) {
+    document.getElementById('progress-title').classList.remove('pulsing');
+    document.getElementById('progress-title').textContent = 'Done!';
+  }
+}
+
+async function loadResults() {
+  const res = await fetch(`/results/${jobId}`);
+  const data = await res.json();
+  allResults = data.results;
+
+  // Stats
+  const counts = { VALID:0, INVALID:0, DISPOSABLE:0, 'ROLE-BASED':0 };
+  allResults.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+  document.getElementById('stat-total').textContent = allResults.length.toLocaleString();
+  document.getElementById('stat-valid').textContent = counts.VALID.toLocaleString();
+  document.getElementById('stat-invalid').textContent = counts.INVALID.toLocaleString();
+  document.getElementById('stat-disposable').textContent = counts.DISPOSABLE.toLocaleString();
+  document.getElementById('stat-role').textContent = counts['ROLE-BASED'].toLocaleString();
+
+  // Show stats
+  document.getElementById('progress-section').style.display = 'none';
+  document.getElementById('stats-section').style.display = 'block';
+
+  // Downloads
+  buildDownloads(counts);
+  document.getElementById('download-section').style.display = 'block';
+
+  // Table
+  applyFilter('ALL');
+  document.getElementById('results-section').style.display = 'block';
+
+  showToast(`✓ ${allResults.length.toLocaleString()} emails verified`, 'success');
+}
+
+function buildDownloads(counts) {
+  const downloads = [
+    { key:'all',        icon:'📋', name:'Full Report',    sub:'All results (CSV)', count: allResults.length },
+    { key:'valid',      icon:'✅', name:'Valid Emails',   sub:'valid_emails.csv',  count: counts.VALID },
+    { key:'invalid',    icon:'❌', name:'Invalid Emails', sub:'invalid_emails.csv',count: counts.INVALID },
+    { key:'disposable', icon:'🗑️', name:'Disposable',     sub:'disposable_emails.csv', count: counts.DISPOSABLE },
+    { key:'role',       icon:'👤', name:'Role-Based',     sub:'role_emails.csv',   count: counts['ROLE-BASED'] },
+  ];
+  const grid = document.getElementById('download-grid');
+  grid.innerHTML = downloads.map(d => `
+    <a class="dl-btn" href="/download/${jobId}/${d.key}" download>
+      <span class="dl-icon">${d.icon}</span>
+      <span class="dl-info">
+        <span class="dl-name">${d.name} <span style="color:var(--text-dim);font-weight:400">(${d.count.toLocaleString()})</span></span>
+        <span class="dl-sub">${d.sub}</span>
+      </span>
+    </a>
+  `).join('');
+}
+
+// ─── Table / filtering ────────────────────────────────────────────────────────
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilter(btn.dataset.filter);
+  });
+});
+
+document.getElementById('search-box').addEventListener('input', e => {
+  searchQuery = e.target.value.toLowerCase();
+  applyFilter(currentFilter);
+});
+
+function applyFilter(filter) {
+  currentFilter = filter;
+  filteredResults = allResults.filter(r => {
+    const matchFilter = filter === 'ALL' || r.status === filter;
+    const matchSearch = !searchQuery || r.email.includes(searchQuery);
+    return matchFilter && matchSearch;
+  });
+  currentPage = 0;
+  renderTable();
+}
+
+function renderTable() {
+  const start = currentPage * PAGE_SIZE;
+  const end   = Math.min(start + PAGE_SIZE, filteredResults.length);
+  const rows  = filteredResults.slice(start, end);
+
+  document.getElementById('results-body').innerHTML = rows.map((r, i) => `
+    <tr>
+      <td style="color:var(--text-dim)">${(start + i + 1).toLocaleString()}</td>
+      <td>${escHtml(r.email)}</td>
+      <td><span class="pill ${r.status}"><span class="pill-dot"></span>${r.status}</span></td>
+      <td class="reason-text">${escHtml(r.reason)}</td>
+    </tr>
+  `).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:40px">No results match your filter.</td></tr>`;
+
+  document.getElementById('page-info').textContent =
+    filteredResults.length ? `Showing ${(start+1).toLocaleString()}–${end.toLocaleString()} of ${filteredResults.length.toLocaleString()}` : 'No results';
+  document.getElementById('btn-prev').disabled = currentPage === 0;
+  document.getElementById('btn-next').disabled = end >= filteredResults.length;
+}
+
+document.getElementById('btn-prev').addEventListener('click', () => { currentPage--; renderTable(); });
+document.getElementById('btn-next').addEventListener('click', () => { currentPage++; renderTable(); });
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  jobId = null; allResults = []; filteredResults = []; currentPage = 0;
+  ['stats-section','download-section','results-section'].forEach(id => document.getElementById(id).style.display='none');
+  document.getElementById('upload-section').style.display = 'block';
+  fileInput.value = '';
+});
+
+// ─── Utils ────────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+function showError(msg) {
+  clearInterval(pollTimer);
+  document.getElementById('progress-section').style.display = 'none';
+  document.getElementById('upload-section').style.display = 'block';
+  showToast(msg, 'error');
+}
+</script>
+</body>
+</html>
