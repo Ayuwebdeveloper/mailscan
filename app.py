@@ -383,13 +383,24 @@ def download(job_id, filter_type):
     writer.writerows(rows)
     buf.seek(0)
 
-    filename = f"{filter_type}_emails.csv" if filter_type != 'all' else 'email_verification_report.csv'
-    return send_file(
+    filename_map = {
+        'all':        'email_verification_report.csv',
+        'valid':      'valid_emails.csv',
+        'invalid':    'invalid_emails.csv',
+        'disposable': 'disposable_emails.csv',
+        'role':       'role_emails.csv',
+        'unknown':    'unknown_emails.csv',
+    }
+    filename = filename_map.get(filter_type, f'{filter_type}_emails.csv')
+    response = send_file(
         BytesIO(buf.getvalue().encode()),
         mimetype='text/csv',
         as_attachment=True,
         download_name=filename
     )
+    response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 
 if __name__ == '__main__':
