@@ -814,16 +814,16 @@ async function loadResults() {
 
 function buildDownloads(counts) {
   const downloads = [
-    { key:'all',        icon:'📋', name:'Full Report',    sub:'All results (CSV)', count: allResults.length },
-    { key:'valid',      icon:'✅', name:'Valid Emails',   sub:'valid_emails.csv',  count: counts.VALID },
-    { key:'invalid',    icon:'❌', name:'Invalid Emails', sub:'invalid_emails.csv',count: counts.INVALID },
-    { key:'disposable', icon:'🗑️', name:'Disposable',     sub:'disposable_emails.csv', count: counts.DISPOSABLE },
-    { key:'role',       icon:'👤', name:'Role-Based',     sub:'role_emails.csv',   count: counts['ROLE-BASED'] },
-    { key:'unknown',    icon:'❓', name:'Unknown',        sub:'unknown_emails.csv', count: counts.UNKNOWN||0 },
+    { key:'all',        icon:'📋', name:'Full Report',    sub:'email_verification_report.csv', count: allResults.length },
+    { key:'valid',      icon:'✅', name:'Valid Emails',   sub:'valid_emails.csv',              count: counts.VALID },
+    { key:'invalid',    icon:'❌', name:'Invalid Emails', sub:'invalid_emails.csv',            count: counts.INVALID },
+    { key:'disposable', icon:'🗑️', name:'Disposable',     sub:'disposable_emails.csv',         count: counts.DISPOSABLE },
+    { key:'role',       icon:'👤', name:'Role-Based',     sub:'role_emails.csv',               count: counts['ROLE-BASED'] },
+    { key:'unknown',    icon:'❓', name:'Unknown',        sub:'unknown_emails.csv',            count: counts.UNKNOWN||0 },
   ];
   const grid = document.getElementById('download-grid');
   grid.innerHTML = downloads.map(d => `
-    <a class="dl-btn" href="/download/${jobId}/${d.key}" download>
+    <a class="dl-btn" href="/download/${jobId}/${d.key}" download="${d.sub}">
       <span class="dl-icon">${d.icon}</span>
       <span class="dl-info">
         <span class="dl-name">${d.name} <span style="color:var(--text-dim);font-weight:400">(${d.count.toLocaleString()})</span></span>
